@@ -320,9 +320,22 @@ function main() {
                                 ? "https://toncenter.com/api/v2/jsonRPC"
                                 : "https://testnet.toncenter.com/api/v2/jsonRPC";
                             const httpClient = new HttpApi(endpoint, { apiKey: process.env.API_KEY });
-                            const transactions = yield httpClient.getTransactions(wallet.address, {
-                                limit: 100,
-                            });
+                            const apiUrl = `https://toncenter.com/api/v2/getTransactions?address=${wallet.address}&limit=100&archival=true`;
+                            let transactions;
+                            try {
+                                // Make the HTTP request using axios
+                                const response = yield axios.get(apiUrl);
+                                // Process the response data
+                                transactions = yield Object.values(response.data.result);
+                                // transactions = await httpClient.getTransactions(wallet.address, {
+                                //     limit: 100,
+                                // });
+                                //console.log('Transactions:', transactions);
+                            }
+                            catch (error) {
+                                console.error('Error fetching transactions:', error.message);
+                                throw error;
+                            }
                             let incomingTransactions = transactions.filter((tx) => Object.keys(tx.out_msgs).length === 0);
                             for (const transaction of incomingTransactions) {
                                 const hashToMatch = transaction.transaction_id.hash;

@@ -334,9 +334,21 @@ async function main() {
                         endpoint,
                         { apiKey: process.env.API_KEY }
                     );
-                    const transactions = await httpClient.getTransactions(wallet.address, {
-                        limit: 100,
-                    });
+                    const apiUrl = `https://toncenter.com/api/v2/getTransactions?address=${wallet.address}&limit=100&archival=true`;
+                    let transactions;
+                    try {
+                        // Make the HTTP request using axios
+                        const response = await axios.get(apiUrl);
+                        // Process the response data
+                        transactions = await Object.values(response.data.result);
+                        // transactions = await httpClient.getTransactions(wallet.address, {
+                        //     limit: 100,
+                        // });
+                        //console.log('Transactions:', transactions);
+                    } catch (error) {
+                        console.error('Error fetching transactions:', error.message);
+                        throw error;
+                    }
                     let incomingTransactions = transactions.filter(
                         (tx) => Object.keys(tx.out_msgs).length === 0
                     );
