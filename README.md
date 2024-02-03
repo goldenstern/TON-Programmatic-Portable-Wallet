@@ -30,7 +30,6 @@ npm run start
 Create Order:
 Endpoint: POST /order/
 Creates a new order based on the provided parameters.
-
 Request Parameters:
 amount (number): The order amount.
 description (string): Description of the order.
