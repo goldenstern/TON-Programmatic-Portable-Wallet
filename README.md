@@ -62,7 +62,7 @@ orderid (string): ID of the order.
 
 Create Order with Currency:
 Endpoint: POST /order/:currency/
-Creates a new order with the specified currency. Converts the provided amount to TON based on the TON/RUB rate for the specified currency.
+Creates a new order with the specified currency. Converts the provided amount to TON based on the TON/CURRENCY rate for the specified currency.
 Request Parameters:
 amount (number): The order amount.
 description (string): Description of the order.
@@ -79,11 +79,7 @@ Wallet Order:
 The system fetches incoming transactions for @wallet pay orders at regular intervals (every 60 seconds).
 Transactions are processed and matched with open orders.
 
-Additional Features
-Logging:
-The application logs messages, errors, warnings, and debug information to a file (./data/app.log).
-
-##Additional Features
+#Additional Features
 Logging:
 The application logs messages, errors, warnings, and debug information to a file (./data/app.log).
 
