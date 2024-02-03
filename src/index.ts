@@ -53,9 +53,10 @@ console.debug = (...args) => {
   originalConsoleDebug(...args);
   logStream.write(`[DEBUG] ${new Date().toISOString()} ${args.join(' ')}\n`);
 };
-
-
 //logger
+
+const ordersDb = new Datastore({ filename: './data/orders.db', autoload: true });
+const transactionsDb = new Datastore({ filename: './data/transactions.db', autoload: true });
 
 function findOrdersRecursive(ordersDb: Datastore, amount: number): Promise<any[]> {
     return new Promise((resolve, reject) => {
@@ -76,10 +77,11 @@ async function main() {
     const wallet = WalletContractV4.create({ publicKey: key.publicKey, workchain: 0 });
 
     app.post('/order/', async function(req, res) {
-        
-        const ordersDb = new Datastore({ filename: './data/orders.db', autoload: true });
 
         let amount: number = parseFloat(parseFloat(req.body.amount).toFixed(3));
+        let description: string = req.body.description
+        let return_url: string = req.body.return_url
+        let user_id: number = req.body.user_id
 
         ordersDb.find({ amount, status: 'new' }, async (err, orders) => {
             if (err) {
@@ -91,20 +93,33 @@ async function main() {
                     status: 'new',
                     amount: amount as number, 
                     timestamp: Date.now(),
+                    wallet_order_id: null
                 };
-                ordersDb.insert(orderInfo, (err, newDoc) => {
+                ordersDb.insert(orderInfo, async (err, newDoc) => {
                     if (err) {
                         res.status(500).send({ error: err })
                     } else {
                         const newRecordId = (newDoc as { _id?: string })?._id;
+                        let wallet_l;
+                        if (process.env.WALLET_API.length > 0) {
+                            wallet_l = await walletOrder(newRecordId, user_id, amount, 'TON', description, '', return_url )
+                        }
                         const responseObj = {
                             success: true,
                             //message: `Created order for ${req.params.amount} with id ${newRecordId}`,
                             amount: amount,
                             id: newRecordId,
+                            paylink: process.env.WALLET_API.length > 0 ? wallet_l.directPayLink : '',
                             wallet: wallet.address.toString({ testOnly: true })
                         };
-                        res.json(responseObj);
+                        ordersDb.update({ _id: newRecordId }, { $set: { wallet_order_id: wallet_l.id } }, {}, function (err, numUpdated) {
+                            if (err) {
+                                console.error(err);
+                            } else {
+                                res.json(responseObj);
+                            }
+                        });
+                        
                     }
                 });
             } else {
@@ -119,21 +134,33 @@ async function main() {
                     status: 'new',
                     amount: amount, 
                     timestamp: Date.now(),
+                    wallet_order_id: null
                 };
                 console.log("Same AMT NEW: ",amount)
-                ordersDb.insert(orderInfo, (err, newDoc) => {
+                ordersDb.insert(orderInfo, async (err, newDoc) => {
                     if (err) {
                         res.status(500).send({ error: err })
                     } else {
                         const newRecordId = (newDoc as { _id?: string })?._id;
+                        let wallet_l;
+                        if (process.env.WALLET_API.length > 0) {
+                            wallet_l = await walletOrder(newRecordId, user_id, amount, 'TON', description, '', return_url )
+                        }
                         const responseObj = {
                             success: true,
                             //message: `Created order for ${amount} with id ${newRecordId}`,
                             amount: amount,
                             id: newRecordId,
+                            paylink: process.env.WALLET_API.length > 0 ? wallet_l.directPayLink : '',
                             wallet: wallet.address.toString({ testOnly: true })
                         };
-                        res.json(responseObj);
+                        ordersDb.update({ _id: newRecordId }, { $set: { wallet_order_id: wallet_l.id } }, {}, function (err, numUpdated) {
+                            if (err) {
+                                console.error(err);
+                            } else {
+                                res.json(responseObj);
+                            }
+                        });
                     }
                 });
             }
@@ -162,13 +189,15 @@ async function main() {
     });
 
     app.post('/order/:currency/', async function(req, res) {
-        const ordersDb = new Datastore({ filename: './data/orders.db', autoload: true });
         console.log(`TON to ${req.params.currency} ORDER: `, req.body);
         let amount: number = parseFloat(req.body.amount);
         let currency: string = req.params.currency;
+        let return_url: string = req.body.return_url
+        let description: string = req.body.description
+        let user_id: number = req.body.user_id
         fetchTonRate(currency)
             .then((tonRate) => {
-                console.log(`TON to RUB rate: ${tonRate}`);
+                console.log(`TON to CURRENCY rate: ${tonRate}`);
                 amount = parseFloat((amount / tonRate).toFixed(3));
                 ordersDb.find({ amount, status: 'new' }, async (err, orders) => {
                     if (err) {
@@ -180,20 +209,32 @@ async function main() {
                             status: 'new',
                             amount: amount as number, 
                             timestamp: Date.now(),
+                            wallet_order_id: null
                         };
-                        ordersDb.insert(orderInfo, (err, newDoc) => {
+                        ordersDb.insert(orderInfo, async (err, newDoc) => {
                             if (err) {
                                 res.status(500).send({ error: err })
                             } else {
                                 const newRecordId = (newDoc as { _id?: string })?._id;
+                                let wallet_l;
+                                if (process.env.WALLET_API.length > 0) {
+                                    wallet_l = await walletOrder(newRecordId, user_id, amount, 'TON', description, '', return_url )
+                                }
                                 const responseObj = {
                                     success: true,
                                     //message: `Created order for ${req.params.amount} with id ${newRecordId}`,
                                     amount: amount,
                                     id: newRecordId,
+                                    paylink: process.env.WALLET_API.length > 0 ? wallet_l.directPayLink : '',
                                     wallet: wallet.address.toString({ testOnly: true })
                                 };
-                                res.json(responseObj);
+                                ordersDb.update({ _id: newRecordId }, { $set: { wallet_order_id: wallet_l.id } }, {}, function (err, numUpdated) {
+                                    if (err) {
+                                        console.error(err);
+                                    } else {
+                                        res.json(responseObj);
+                                    }
+                                });
                             }
                         });
                     } else {
@@ -208,21 +249,33 @@ async function main() {
                             status: 'new',
                             amount: amount, 
                             timestamp: Date.now(),
+                            wallet_order_id: null
                         };
                         console.log("Same AMT NEW: ",amount)
-                        ordersDb.insert(orderInfo, (err, newDoc) => {
+                        ordersDb.insert(orderInfo, async (err, newDoc) => {
                             if (err) {
                                 res.status(500).send({ error: err })
                             } else {
                                 const newRecordId = (newDoc as { _id?: string })?._id;
+                                let wallet_l;
+                                if (process.env.WALLET_API.length > 0) {
+                                    wallet_l = await walletOrder(newRecordId, user_id, amount, 'TON', description, '', return_url )
+                                }
                                 const responseObj = {
                                     success: true,
                                     //message: `Created order for ${amount} with id ${newRecordId}`,
                                     amount: amount,
                                     id: newRecordId,
+                                    paylink: process.env.WALLET_API.length > 0 ? wallet_l.directPayLink : '',
                                     wallet: wallet.address.toString({ testOnly: true })
                                 };
-                                res.json(responseObj);
+                                ordersDb.update({ _id: newRecordId }, { $set: { wallet_order_id: wallet_l.id } }, {}, function (err, numUpdated) {
+                                    if (err) {
+                                        console.error(err);
+                                    } else {
+                                        res.json(responseObj);
+                                    }
+                                });
                             }
                         });
                     }
@@ -238,7 +291,6 @@ async function main() {
 
 
     app.get('/order/', function(req, res) {
-        const ordersDb = new Datastore({ filename: './data/orders.db', autoload: true });
         ordersDb.find({ status: 'new' }, async (err, orders) => {
             if (err) {
                 res.status(500).send({ error: err })
@@ -267,7 +319,6 @@ async function main() {
 
     app.get('/order/:orderid/', function(req, res) {
         let id: string = req.params.orderid;
-        const ordersDb = new Datastore({ filename: './data/orders.db', autoload: true });
         ordersDb.find({ _id: id }, async (err, orders) => {
             if (err) {
                 res.status(500).send({ error: err })
@@ -292,7 +343,6 @@ async function main() {
 
     app.delete('/order/:orderid/', function(req, res) {
         let id: string = req.params.orderid;
-        const ordersDb = new Datastore({ filename: './data/orders.db', autoload: true });
         ordersDb.remove({ _id: id }, async (err, orders) => {
             if (err) {
                 res.status(500).send({ error: err })
@@ -312,8 +362,6 @@ async function main() {
 
     async function fetchTrans() {
         console.log("Daemon Fetching Transactions...");
-        const transactionsDb = new Datastore({ filename: './data/transactions.db', autoload: true });
-        const ordersDb = new Datastore({ filename: './data/orders.db', autoload: true });
         //FETCH TRANSACTIONS
         ordersDb.find({ status: 'new' }, async (err, orders) => {
             if (err) {
@@ -322,8 +370,6 @@ async function main() {
             if (orders.length === 0) {
                 console.log("Skip Fetching Transactions... No open orders.");
             } else {
-
-
                 try {
 
                     const endpoint =
@@ -417,6 +463,49 @@ async function main() {
                             }
                         });
                     }
+                    
+                    //Get Wallet orders if Wallet API is on
+                    if (process.env.WALLET_API.length > 0) {
+                        console.log('Wallet API in use, fetching orders...');
+                        const apiUrl = 'https://pay.wallet.tg/wpay/store-api/v1/order/preview';
+                        orders.forEach(async (doc) => {
+                            let response;
+                            try {
+                                response = await axios.get(apiUrl, {
+                                    params: {
+                                        id: doc.wallet_order_id,
+                                    },
+                                    headers: {
+                                        'Wpay-Store-Api-Key': process.env.WALLET_API,
+                                    },
+                                });
+                            
+                                // Handle the response data here
+                                console.log(response.data.data);
+                                //closeOrderCallback(doc._id);
+                            } catch (error) {
+                                // Handle errors here
+                                console.error(error);
+                            }
+                            if (response.data.data.status == 'PAID') {
+                                closeOrderCallback(doc._id);
+                                const updateOptions = { multi: true };
+                                const updatedStatus = 'complete';
+                                const updateQuery = { $set: { status: updatedStatus } };
+                                const query = { amount: doc.amount, status: 'new' };
+                                ordersDb.update(query, updateQuery, updateOptions, (err, numUpdated) => {
+                                    if (err) {
+                                        console.error('Error updating orders in the database:', err);
+                                    } else {
+                                        console.log(`${numUpdated} orders updated to status: ${updatedStatus}`);
+                                    }
+                                });
+                            }
+                        
+                        });
+                    }
+                    
+
                     //ABORT OUTDATED ORDERS
                     const outdatedTimestamp = Date.now() - 60 * 60 * 1000; // One hour ago
                     const updatedStatus = 'aborted';
@@ -459,18 +548,39 @@ async function main() {
     }
 }
 
-// async function fetchTonToRubbleRate() {
-//     const apiUrl = 'https://tonapi.io/v2/rates?tokens=ton&currencies=rub';
-
-//     try {
-//         const response = await axios.get(apiUrl);
-//         const tonToRubbleRate = response.data.rates.TON.prices.RUB;
-//         return tonToRubbleRate;
-//     } catch (error) {
-//         console.error('Error fetching TON/RUB rate:', error);
-//         throw error;
-//     }
-// }
+async function walletOrder(id, user_id, amount, currency, description, data, return_url ) {
+    const apiUrl = 'https://pay.wallet.tg/wpay/store-api/v1/order';
+    const orderData = {
+        amount: {
+          currencyCode: currency,
+          amount: amount,
+        },
+        autoConversionCurrency: 'TON',
+        description: description,
+        returnUrl: return_url,
+        failReturnUrl: return_url,
+        customData: data,
+        externalId: id,
+        timeoutSeconds: 3600,
+        customerTelegramUserId: user_id,
+    };
+    try {
+        const response = await axios.post(apiUrl, orderData, {
+            headers: {
+              'Wpay-Store-Api-Key': process.env.WALLET_API,
+            },
+        });
+    
+        // Handle the response data here
+        console.log(response.data.data);
+        return response.data.data
+        //closeOrderCallback(doc._id);
+    } catch (error) {
+        // Handle errors here
+        console.error(error);
+        throw error;
+    }
+}
 
 async function fetchTonRate(currency) {
     const apiUrl = 'https://tonapi.io/v2/rates?tokens=ton&currencies=' + currency;
