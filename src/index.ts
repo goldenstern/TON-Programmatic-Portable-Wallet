@@ -112,13 +112,17 @@ async function main() {
                             paylink: process.env.WALLET_API.length > 0 ? wallet_l.directPayLink : '',
                             wallet: wallet.address.toString({ testOnly: true })
                         };
-                        ordersDb.update({ _id: newRecordId }, { $set: { wallet_order_id: wallet_l.id } }, {}, function (err, numUpdated) {
-                            if (err) {
-                                console.error(err);
-                            } else {
-                                res.json(responseObj);
-                            }
-                        });
+                        if (process.env.WALLET_API.length > 0) {
+                            ordersDb.update({ _id: newRecordId }, { $set: { wallet_order_id: wallet_l.id } }, {}, function (err, numUpdated) {
+                                if (err) {
+                                    console.error(err);
+                                } else {
+                                    res.json(responseObj);
+                                }
+                            });
+                        } else {
+                            res.json(responseObj);
+                        }
                         
                     }
                 });
@@ -154,13 +158,17 @@ async function main() {
                             paylink: process.env.WALLET_API.length > 0 ? wallet_l.directPayLink : '',
                             wallet: wallet.address.toString({ testOnly: true })
                         };
-                        ordersDb.update({ _id: newRecordId }, { $set: { wallet_order_id: wallet_l.id } }, {}, function (err, numUpdated) {
-                            if (err) {
-                                console.error(err);
-                            } else {
-                                res.json(responseObj);
-                            }
-                        });
+                        if (process.env.WALLET_API.length > 0) {
+                            ordersDb.update({ _id: newRecordId }, { $set: { wallet_order_id: wallet_l.id } }, {}, function (err, numUpdated) {
+                                if (err) {
+                                    console.error(err);
+                                } else {
+                                    res.json(responseObj);
+                                }
+                            });
+                        } else {
+                            res.json(responseObj);
+                        }
                     }
                 });
             }
@@ -228,13 +236,17 @@ async function main() {
                                     paylink: process.env.WALLET_API.length > 0 ? wallet_l.directPayLink : '',
                                     wallet: wallet.address.toString({ testOnly: true })
                                 };
-                                ordersDb.update({ _id: newRecordId }, { $set: { wallet_order_id: wallet_l.id } }, {}, function (err, numUpdated) {
-                                    if (err) {
-                                        console.error(err);
-                                    } else {
-                                        res.json(responseObj);
-                                    }
-                                });
+                                if (process.env.WALLET_API.length > 0) {
+                                    ordersDb.update({ _id: newRecordId }, { $set: { wallet_order_id: wallet_l.id } }, {}, function (err, numUpdated) {
+                                        if (err) {
+                                            console.error(err);
+                                        } else {
+                                            res.json(responseObj);
+                                        }
+                                    });
+                                } else {
+                                    res.json(responseObj);
+                                }
                             }
                         });
                     } else {
@@ -269,13 +281,17 @@ async function main() {
                                     paylink: process.env.WALLET_API.length > 0 ? wallet_l.directPayLink : '',
                                     wallet: wallet.address.toString({ testOnly: true })
                                 };
-                                ordersDb.update({ _id: newRecordId }, { $set: { wallet_order_id: wallet_l.id } }, {}, function (err, numUpdated) {
-                                    if (err) {
-                                        console.error(err);
-                                    } else {
-                                        res.json(responseObj);
-                                    }
-                                });
+                                if (process.env.WALLET_API.length > 0) {
+                                    ordersDb.update({ _id: newRecordId }, { $set: { wallet_order_id: wallet_l.id } }, {}, function (err, numUpdated) {
+                                        if (err) {
+                                            console.error(err);
+                                        } else {
+                                            res.json(responseObj);
+                                        }
+                                    });
+                                } else {
+                                    res.json(responseObj);
+                                }
                             }
                         });
                     }
@@ -582,7 +598,7 @@ async function walletOrder(id, user_id, amount, currency, description, data, ret
     }
 }
 
-async function fetchTonRate(currency) {
+async function fetchTonRate(currency, retryCount = 7) {
     const apiUrl = 'https://tonapi.io/v2/rates?tokens=ton&currencies=' + currency;
 
     try {
@@ -591,7 +607,13 @@ async function fetchTonRate(currency) {
         return tonRate;
     } catch (error) {
         console.error('Error fetching TON/RUB rate:', error);
-        throw error;
+        if (retryCount > 0) {
+            console.error('Retrying...');
+            return new Promise(resolve => setTimeout(() => resolve(fetchTonRate(currency, retryCount - 1)), 5000));
+        }  else {
+            console.error('Reached maximum fetchTonRate retry attempts. Unable to get the desired response.');
+            throw new Error('Maximum fetchTonRate retry attempts reached.');
+        }
     }
 }
 
@@ -601,7 +623,7 @@ async function closeOrderCallback(id) {
 
     try {
         const response = await axios.post(url, { data: { id }, timeout: 5000 });
-        console.log(`Order callback to status complete: ${id}`);
+        console.log(`Order callback to status complete: ${id}`,response);
         return response.data;
     } catch (error) {
         console.error('Error:', error.message);
@@ -615,7 +637,7 @@ async function abortOrderCallback(id) {
 
     try {
         const response = await axios.delete(url, { data: { id }, timeout: 5000 });
-        console.log(`Order callback to status aborted: ${id}`);
+        console.log(`Order callback to status aborted: ${id}`,response);
         return response.data;
     } catch (error) {
         console.error('Error:', error.message);
