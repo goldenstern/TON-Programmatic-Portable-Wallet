@@ -4,6 +4,7 @@ This project is a TON Order Management System built using TypeScript and Express
 ## Prerequisites
 Make sure you have Node.js and npm installed on your machine. You'll also need a .env file in the project root with the following variables:
 ```
+PORT="service port"
 MNEMONIC="your_ton_wallet_24_word_mnemonic_phrase"
 WALLET_API="your_wallet_pay_api_key"
 NETWORK="testnet/mainnet"
@@ -22,7 +23,7 @@ npm run build
 npm run start
 ```
 
-### The server will be running on http://localhost:5000.
+### The server will be running on http://localhost:PORT.
 
 ## Features
 
@@ -90,6 +91,17 @@ description (string): Description of the order.
 return_url (string): URL for callback on order completion.
 user_id (number): User ID associated with the order.
 ```
+
+**Fetch Balance (to Currency):**
+*Endpoint:* POST /balance/:currency/
+
+Fetch wallet balance in CURRENCY based on the TON/CURRENCY rate.
+
+**Fetch Balance:**
+*Endpoint:* POST /balance/
+
+Fetch wallet balance in TON.
+
 
 **Transaction Processing**
 *Fetch Transactions:*

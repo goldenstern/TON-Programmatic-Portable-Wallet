@@ -14,7 +14,7 @@ import fs from 'fs';
 
 const app = express();
 app.use(express.json());
-const port = 5000;
+const port = process.env.PORT;
 
 //logger
 
@@ -194,6 +194,43 @@ async function main() {
                 console.error('Error:', error);
                 res.status(500).send({ error: error })
             });
+    });
+
+    // /balance/:currency/ endpoint
+    app.post('/balance/:currency/', async (req, res) => {
+        const currency = req.params.currency.toLowerCase();
+
+        try {
+            const walletBalance = await getWalletBalance();
+            const tonRate = await fetchTonRate(currency);
+
+            const convertedBalance = parseFloat((parseFloat(walletBalance) * tonRate).toFixed(3));
+
+            res.json({
+                success: true,
+                walletBalance,
+                currency,
+                convertedBalance,
+            });
+        } catch (error) {
+            console.error('Error fetching balance:', error.message);
+            res.status(500).send({ error: error.message });
+        }
+    });
+
+    // /balance/ endpoint
+    app.post('/balance/', async (req, res) => {
+        try {
+            const walletBalance = await getWalletBalance();
+
+            res.json({
+                success: true,
+                walletBalance,
+            });
+        } catch (error) {
+            console.error('Error fetching balance:', error.message);
+            res.status(500).send({ error: error.message });
+        }
     });
 
     app.post('/order/:currency/', async function(req, res) {
@@ -643,6 +680,28 @@ async function abortOrderCallback(id) {
         console.error('Error:', error.message);
         throw error;
     }
+}
+
+async function getWalletBalance() {
+    const mnemonic = process.env.MNEMONIC as string;
+    if (!mnemonic) {
+        throw new Error("MNEMONIC is not defined in the environment variables");
+    }
+
+    const keyPair = await mnemonicToWalletKey(mnemonic.split(" "));
+
+    const wallet = WalletContractV4.create({
+        publicKey: keyPair.publicKey,
+        workchain: 0,
+    });
+
+    const client = new TonClient({
+        endpoint: "https://toncenter.com/api/v2/jsonRPC", // Replace if needed
+        apiKey: process.env.API_KEY, // API key from .env
+    });
+
+    const walletBalance = await client.getBalance(wallet.address); // Fetch wallet balance
+    return fromNano(walletBalance); // Convert from nano to TON for readability
 }
 
 main();
