@@ -104,7 +104,7 @@ async function main() {
               messages: [transferMessage],
               sendMode: SendMode.IGNORE_ERRORS //SendMode.PAY_GAS_SEPARATELY,
             });
-            
+
             await res.json({ success: true, message: `Sent ${amount} TON to ${destination}` });
             console.log(`Sent ${amount} TON to ${destination}`);
             console.log(transaction);
@@ -126,9 +126,9 @@ async function main() {
             let balanceNano = await contract.getBalance();
             let balanceTON = parseFloat(fromNano(balanceNano));
             
-            let feeTON = 0.05;
-            const feeIncrement = 0.01;
-            const maxRetries = 7;
+            let feeTON = 0.001;
+            const feeIncrement = 0.001;
+            const maxRetries = 13;
             let success = false;
             let lastError;
             

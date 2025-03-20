@@ -120,9 +120,9 @@ function main() {
                 }
                 let balanceNano = yield contract.getBalance();
                 let balanceTON = parseFloat(fromNano(balanceNano));
-                let feeTON = 0.05;
-                const feeIncrement = 0.01;
-                const maxRetries = 7;
+                let feeTON = 0.001;
+                const feeIncrement = 0.001;
+                const maxRetries = 13;
                 let success = false;
                 let lastError;
                 for (let i = 0; i < maxRetries; i++) {
