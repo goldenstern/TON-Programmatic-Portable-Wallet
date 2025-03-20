@@ -380,7 +380,7 @@ async function main() {
                                         amount: amount,
                                         id: newRecordId,
                                         paylink: process.env.WALLET_API.length > 0 ? wallet_l.directPayLink : '',
-                                        wallet: wallet.address.toString({ testOnly: false })
+                                        wallet: wallet.address.toString({ bounceable: false, testOnly: false })
                                     };
                                     if (process.env.WALLET_API.length > 0) {
                                         ordersDb.update({ _id: newRecordId }, { $set: { wallet_order_id: wallet_l.id } }, {}, function (err, numUpdated) {
@@ -425,7 +425,7 @@ async function main() {
                                         amount: amount,
                                         id: newRecordId,
                                         paylink: process.env.WALLET_API.length > 0 ? wallet_l.directPayLink : '',
-                                        wallet: wallet.address.toString({ testOnly: false })
+                                        wallet: wallet.address.toString({ bounceable: false, testOnly: false })
                                     };
                                     if (process.env.WALLET_API.length > 0) {
                                         ordersDb.update({ _id: newRecordId }, { $set: { wallet_order_id: wallet_l.id } }, {}, function (err, numUpdated) {
