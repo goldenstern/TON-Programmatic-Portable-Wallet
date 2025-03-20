@@ -33,12 +33,12 @@ npm run start
 ### Order Endpoints
 
 **Admin Cash In:**
-*Endpoint:* POST /admin/cashin/
+*Endpoint:* POST /admin/cashin
 
 Sends a transaction to Admin TON address, specified in .env
 
 **Send TON:**
-*Endpoint:* POST /send/
+*Endpoint:* POST /send
 
 Sends a transaction to TON address, if allowed in .env
 
