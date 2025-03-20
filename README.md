@@ -4,6 +4,8 @@ This project is a TON Order Management System built using TypeScript and Express
 ## Prerequisites
 Make sure you have Node.js and npm installed on your machine. You'll also need a .env file in the project root with the following variables:
 ```
+ALLOW_SEND=false #Allow SEND TON function
+ADMIN_ADDRESS="Admin cashin TON address"
 PORT="service port"
 MNEMONIC="your_ton_wallet_24_word_mnemonic_phrase"
 WALLET_API="your_wallet_pay_api_key"
@@ -24,11 +26,27 @@ npm run start
 ```
 
 ### The server will be running on http://localhost:PORT.
+### Wallet updated to WalletContractV5R1!
 
 ## Features
 
 ### Order Endpoints
 
+**Admin Cash In:**
+*Endpoint:* POST /admin/cashin
+
+Sends a transaction to Admin TON address, specified in .env
+
+**Send TON:**
+*Endpoint:* POST /send/
+
+Sends a transaction to TON address, if allowed in .env
+
+*Request Parameters:*
+```
+destination (address): TON destination address.
+amount (float): Amount in TON, e.g. 1.5.
+```
 
 **Create Order:**
 *Endpoint:* POST /order/
