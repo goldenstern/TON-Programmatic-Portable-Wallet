@@ -284,7 +284,238 @@ async function main() {
         });
     });
 
-    // ... (other existing endpoints remain unchanged)
+    app.post('/price/:currency/', function(req, res) {
+            let currency: string = req.params.currency;
+            let amount: number = parseFloat(req.body.amount);
+            fetchTonRate(currency)
+                .then((tonRate) => {
+                    console.log(`TON to RUB rate: ${tonRate}`);
+                    amount = parseFloat((amount / tonRate).toFixed(3));
+                    const responseObj = {
+                        success: true,
+                        currency: currency,
+                        //message: `Created order for ${amount} with id ${newRecordId}`,
+                        amount: amount,
+                    };
+                    res.json(responseObj);
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    res.status(500).send({ error: error })
+                });
+        });
+
+        // /balance/:currency/ endpoint
+        app.post('/balance/:currency/', async (req, res) => {
+            const currency = req.params.currency.toLowerCase();
+
+            try {
+                const walletBalance = await getWalletBalance();
+                const tonRate = await fetchTonRate(currency);
+
+                const convertedBalance = parseFloat((parseFloat(walletBalance) * tonRate).toFixed(3));
+
+                res.json({
+                    success: true,
+                    walletBalance,
+                    currency,
+                    convertedBalance,
+                });
+            } catch (error) {
+                console.error('Error fetching balance:', error.message);
+                res.status(500).send({ error: error.message });
+            }
+        });
+
+        // /balance/ endpoint
+        app.post('/balance/', async (req, res) => {
+            try {
+                const walletBalance = await getWalletBalance();
+
+                res.json({
+                    success: true,
+                    walletBalance,
+                });
+            } catch (error) {
+                console.error('Error fetching balance:', error.message);
+                res.status(500).send({ error: error.message });
+            }
+        });
+
+        app.post('/order/:currency/', async function(req, res) {
+            console.log(`TON to ${req.params.currency} ORDER: `, req.body);
+            let amount: number = parseFloat(req.body.amount);
+            let currency: string = req.params.currency;
+            let return_url: string = req.body.return_url
+            let description: string = req.body.description
+            let user_id: number = req.body.user_id
+            fetchTonRate(currency)
+                .then((tonRate) => {
+                    console.log(`TON to CURRENCY rate: ${tonRate}`);
+                    amount = parseFloat((amount / tonRate).toFixed(3));
+                    ordersDb.find({ amount, status: 'new' }, async (err, orders) => {
+                        if (err) {
+                            res.status(500).send({ error: err })
+                        } 
+                        if (orders.length === 0) {
+                            console.log("No same Orders, price umnodified")
+                            const orderInfo = { 
+                                status: 'new',
+                                amount: amount as number, 
+                                timestamp: Date.now(),
+                                wallet_order_id: null
+                            };
+                            ordersDb.insert(orderInfo, async (err, newDoc) => {
+                                if (err) {
+                                    res.status(500).send({ error: err })
+                                } else {
+                                    const newRecordId = (newDoc as { _id?: string })?._id;
+                                    let wallet_l;
+                                    if (process.env.WALLET_API.length > 0) {
+                                        wallet_l = await walletOrder(newRecordId, user_id, amount, 'TON', description, '', return_url )
+                                    }
+                                    const responseObj = {
+                                        success: true,
+                                        //message: `Created order for ${req.params.amount} with id ${newRecordId}`,
+                                        amount: amount,
+                                        id: newRecordId,
+                                        paylink: process.env.WALLET_API.length > 0 ? wallet_l.directPayLink : '',
+                                        wallet: wallet.address.toString({ testOnly: false })
+                                    };
+                                    if (process.env.WALLET_API.length > 0) {
+                                        ordersDb.update({ _id: newRecordId }, { $set: { wallet_order_id: wallet_l.id } }, {}, function (err, numUpdated) {
+                                            if (err) {
+                                                console.error(err);
+                                            } else {
+                                                res.json(responseObj);
+                                            }
+                                        });
+                                    } else {
+                                        res.json(responseObj);
+                                    }
+                                }
+                            });
+                        } else {
+                            console.log("Same Orders, price modified")
+                            let foundOrders: any[] = [];
+                            foundOrders = await findOrdersRecursive(ordersDb, amount);
+                            while (foundOrders.length > 0) {
+                                amount = parseFloat(fromNano(toNano(amount) + toNano(0.001)));
+                                foundOrders = await findOrdersRecursive(ordersDb, amount);
+                            }
+                            const orderInfo = { 
+                                status: 'new',
+                                amount: amount, 
+                                timestamp: Date.now(),
+                                wallet_order_id: null
+                            };
+                            console.log("Same AMT NEW: ",amount)
+                            ordersDb.insert(orderInfo, async (err, newDoc) => {
+                                if (err) {
+                                    res.status(500).send({ error: err })
+                                } else {
+                                    const newRecordId = (newDoc as { _id?: string })?._id;
+                                    let wallet_l;
+                                    if (process.env.WALLET_API.length > 0) {
+                                        wallet_l = await walletOrder(newRecordId, user_id, amount, 'TON', description, '', return_url )
+                                    }
+                                    const responseObj = {
+                                        success: true,
+                                        //message: `Created order for ${amount} with id ${newRecordId}`,
+                                        amount: amount,
+                                        id: newRecordId,
+                                        paylink: process.env.WALLET_API.length > 0 ? wallet_l.directPayLink : '',
+                                        wallet: wallet.address.toString({ testOnly: false })
+                                    };
+                                    if (process.env.WALLET_API.length > 0) {
+                                        ordersDb.update({ _id: newRecordId }, { $set: { wallet_order_id: wallet_l.id } }, {}, function (err, numUpdated) {
+                                            if (err) {
+                                                console.error(err);
+                                            } else {
+                                                res.json(responseObj);
+                                            }
+                                        });
+                                    } else {
+                                        res.json(responseObj);
+                                    }
+                                }
+                            });
+                        }
+                    });
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    res.status(500).send({ error: error })
+                });
+
+            
+        });
+
+
+        app.get('/order/', function(req, res) {
+            ordersDb.find({ status: 'new' }, async (err, orders) => {
+                if (err) {
+                    res.status(500).send({ error: err })
+                }
+                if (orders.length === 0) {
+                    const responseObj = {
+                        success: true,
+                        message: `No Open Orders!`,
+                    };
+                    res.json(responseObj);
+                } else {
+                    // List the found orders
+                    console.log("Found Orders:");
+                    orders.forEach((order) => {
+                        console.log(`Order ID: ${order._id}, Amount: ${order.amount}, Status ${order.status}, Timestamp: ${order.timestamp}`);
+                        // Add other properties as needed
+                    });
+                    const responseObj = {
+                        success: true,
+                        orders: orders,
+                    };
+                    res.json(responseObj);
+                }
+            });
+        });
+
+        app.get('/order/:orderid/', function(req, res) {
+            let id: string = req.params.orderid;
+            ordersDb.find({ _id: id }, async (err, orders) => {
+                if (err) {
+                    res.status(500).send({ error: err })
+                }
+                if (orders.length === 0) {
+                    const responseObj = {
+                        success: false,
+                        message: `No such orderID`,
+                    };
+                    res.json(responseObj);
+                } else {
+                    // List the found orders
+                    console.log("Order:");
+                    orders.forEach((order) => {
+                        console.log(`Order ID: ${order._id}, Amount: ${order.amount}, Status ${order.status}, Timestamp: ${order.timestamp}`);
+                        // Add other properties as needed
+                    });
+                    res.json(orders);
+                }
+            });
+        });
+
+        app.delete('/order/:orderid/', function(req, res) {
+            let id: string = req.params.orderid;
+            ordersDb.remove({ _id: id }, async (err, orders) => {
+                if (err) {
+                    res.status(500).send({ error: err })
+                }
+                const responseObj = {
+                    success: true,
+                    message: `Delete success`,
+                };
+                res.json(responseObj);
+            });
+        });
 
     app.listen(port, () => console.log(`Running on port ${port}`));
     
