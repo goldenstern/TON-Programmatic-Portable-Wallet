@@ -1,8 +1,3 @@
-Below is the updated **README.md** that now includes output fields for each endpoint.
-
----
-
-```markdown
 # TON Order Management System
 
 This project is a TON Order Management System built using TypeScript and Express.js. It allows users to create, retrieve, update, and delete orders, as well as fetch and process transactions. The system is designed to work with the Telegram Wallet API for processing payments.
@@ -278,8 +273,3 @@ Wallet updated to `WalletContractV5R1`!
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-```
-
----
-
-This version of the README includes additional **Output Fields** sections for each endpoint, detailing the keys and types of data returned by the API responses.
